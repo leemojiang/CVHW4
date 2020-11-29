@@ -7,6 +7,7 @@ date: 15/05/19
 import os
 import sys
 import h5py
+import h5py as h5
 import torch
 import shutil
 import random
@@ -17,6 +18,7 @@ import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.datasets.utils import download_url
+
 
 
 class NYUv2(Dataset):
@@ -75,7 +77,7 @@ class NYUv2(Dataset):
 
         self.train = train
         self._split = "train" if train else "test"
-
+        self.scale=0.3
         if download:
             self.download()
 
@@ -95,7 +97,9 @@ class NYUv2(Dataset):
         if self.rgb_transform is not None:
             random.seed(seed)
             img = Image.open(os.path.join(folder("rgb"), self._files[index]))
+            img = self.preprocess(img,self.scale)
             img = self.rgb_transform(img)
+            
             imgs.append(img)
 
         if self.seg_transform is not None:
@@ -116,10 +120,13 @@ class NYUv2(Dataset):
         if self.depth_transform is not None:
             random.seed(seed)
             img = Image.open(os.path.join(folder("depth"), self._files[index]))
+            img = self.preprocess(img,self.scale)
             img = self.depth_transform(img)
+            
             if isinstance(img, torch.Tensor):
                 # depth png is uint16
                 img = img.float() / 1e4
+                # img=torch.cat([img,img,img])
             imgs.append(img)
 
         return imgs
@@ -173,6 +180,25 @@ class NYUv2(Dataset):
         download_depth(self.root)
         print("Done!")
 
+    @classmethod
+    def preprocess(cls, pil_img, scale):
+        w, h = pil_img.size
+        newW, newH = int(scale * w), int(scale * h)
+        assert newW > 0 and newH > 0, 'Scale is too small'
+        pil_img = pil_img.resize((newW, newH))
+
+        # img_nd = np.array(pil_img)
+
+        # if len(img_nd.shape) == 2:
+        #     img_nd = np.expand_dims(img_nd, axis=2)
+
+        # # HWC to CHW
+        # img_trans = img_nd.transpose((2, 0, 1))
+        # if img_trans.max() > 1:
+        #     img_trans = img_trans / 255
+
+        # img_trans=torch.from_numpy(img_trans).type(torch.FloatTensor)
+        return pil_img
 
 def download_rgb(root: str):
     train_url = "http://www.doc.ic.ac.uk/~ahanda/nyu_train_rgb.tgz"

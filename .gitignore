@@ -3,3 +3,10 @@
 venv
 .idea
 __pycache__
+
+*.out
+core.*
+*.pth
+0015.png
+outTest/*
+runs/*
